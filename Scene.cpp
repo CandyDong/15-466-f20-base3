@@ -99,20 +99,11 @@ glm::mat4 Scene::Camera::make_projection() const {
 	return glm::infinitePerspective( fovy, aspect, near );
 }
 
-void Scene::Camera::set_radius(glm::vec3 position) {
+void Scene::Camera::init_camera(glm::vec3 position) {
 	radius = sqrt(pow(transform->position.y - position.y, 2) + pow(transform->position.z -position.z, 2));
-}
-
-void Scene::Camera::set_zoom(float y_offset) { 
-	// dist -= (mouse_wheel_offset*0.1f);
-	//make it so that moving diagonally doesn't go faster:
-	std::cout << "y_offset: " +std::to_string(y_offset) << std::endl;
-	float move = y_offset;
-
-	glm::mat4x3 frame = transform->make_local_to_parent();
-	glm::vec3 forward = -frame[2];
-	transform->position += move * forward;
-	std::cout << "delta: " + glm::to_string(move*forward) + " forward: "+ glm::to_string(forward) << std::endl;
+	glm::vec3 dist = transform->position - position;
+	elevation = atan2(dist.z, -dist.y);
+	azimuth = atan2(dist.x, -dist.y);
 }
 //-------------------------
 

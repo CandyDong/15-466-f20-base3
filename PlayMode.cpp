@@ -60,9 +60,8 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
-	// camera->reset_pitch_yaw_roll();
-	camera->set_radius(player->position);
-
+	camera->init_camera(player->position);
+	
 	//start music loop playing:
 	// (note: position will be over-ridden in update())
 	// leg_tip_loop = Sound::loop_3D(*dusty_floor_sample, 1.0f, get_leg_tip_position(), 10.0f);
