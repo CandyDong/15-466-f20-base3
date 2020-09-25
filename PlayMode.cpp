@@ -61,7 +61,7 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
 	// camera->reset_pitch_yaw_roll();
-	// camera->reset_dist(player->position);
+	camera->set_radius(player->position);
 
 	//start music loop playing:
 	// (note: position will be over-ridden in update())
@@ -105,55 +105,45 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			down.pressed = false;
 			return true;
 		}
-	} else if (evt.type == SDL_MOUSEBUTTONDOWN) {
-		if (SDL_GetRelativeMouseMode() == SDL_FALSE) {
-			if (evt.button.button == SDL_BUTTON_RIGHT) {
-				SDL_SetRelativeMouseMode(SDL_TRUE);
-				right_mouse_down = true;
-			} else if (evt.button.button == SDL_BUTTON_LEFT) {
-				SDL_SetRelativeMouseMode(SDL_TRUE);
-				left_mouse_down = true;
-			}
+	}//----- trackball-style camera controls -----
+	else if (evt.type == SDL_MOUSEBUTTONDOWN) {
+		if (evt.button.button == SDL_BUTTON_LEFT) {
+			//when camera is upside-down at rotation start, azimuth rotation should be reversed:
+			// (this ends up feeling more intuitive)
+			camera->flip_x = (std::abs(camera->elevation) > 0.5f * 3.1415926f);
 			return true;
 		}
 	} else if (evt.type == SDL_MOUSEMOTION) {
-		if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
-			if (right_mouse_down) {
-				// controls pitch
-				std::cout << "y: " + std::to_string(evt.motion.yrel) << std::endl;
-				camera->set_pitch(evt.motion.yrel);
-				std::cout << "pitch: " + std::to_string(camera->pitch) << std::endl;
-			} else if (left_mouse_down) {
-				// controls yaw
-				camera->set_angle(evt.motion.xrel);
-				std::cout << "angle: " + std::to_string(camera->angle) << std::endl;
+		if (evt.motion.state & SDL_BUTTON(SDL_BUTTON_LEFT)) {
+			//figure out the motion (as a fraction of a normalized [-a,a]x[-1,1] window):
+			glm::vec2 delta;
+			delta.x = evt.motion.xrel / float(window_size.x) * 2.0f;
+			delta.x *= float(window_size.y) / float(window_size.x);
+			delta.y = evt.motion.yrel / float(window_size.y) * -2.0f;
+
+			if (SDL_GetModState() & KMOD_SHIFT) {
+				//shift: pan
+				glm::mat3 frame = glm::mat3_cast(camera->transform->rotation);
+				camera->target -= frame[0] * (delta.x * camera->radius) + frame[1] * (delta.y * camera->radius);
+			} else {
+				//no shift: tumble
+				camera->azimuth -= 3.0f * delta.x * (camera->flip_x ? -1.0f : 1.0f);
+				camera->elevation -= 3.0f * delta.y;
+
+				camera->azimuth /= 2.0f * 3.1415926f;
+				camera->azimuth -= std::round(camera->azimuth);
+				camera->azimuth *= 2.0f * 3.1415926f;
+
+				camera->elevation /= 2.0f * 3.1415926f;
+				camera->elevation -= std::round(camera->elevation);
+				camera->elevation *= 2.0f * 3.1415926f;
 			}
-			// camera->set_position(player);
-			glm::vec2 motion = glm::vec2(
-				evt.motion.xrel / float(window_size.y),
-				-evt.motion.yrel / float(window_size.y)
-			);
-			camera->transform->rotation = glm::normalize(
-				camera->transform->rotation
-				* glm::angleAxis(-motion.x * camera->fovy, glm::vec3(0.0f, 1.0f, 0.0f))
-				* glm::angleAxis(motion.y * camera->fovy, glm::vec3(1.0f, 0.0f, 0.0f))
-			);
 			return true;
-		}
+		} 
 	} else if (evt.type == SDL_MOUSEWHEEL) {
 		camera->set_zoom(evt.wheel.y);
-		// camera->set_position(player);
-		std::cout << "dist: " + std::to_string(camera->dist) << std::endl;
-
-		return true;
-	} else if (evt.type == SDL_MOUSEBUTTONUP) {
-		if ((evt.button.button == SDL_BUTTON_LEFT) && (SDL_GetRelativeMouseMode() == SDL_TRUE)) {
-			SDL_SetRelativeMouseMode(SDL_FALSE);
-			left_mouse_down = false;
-		} else if ((evt.button.button == SDL_BUTTON_RIGHT) && (SDL_GetRelativeMouseMode() == SDL_TRUE)) {
-			SDL_SetRelativeMouseMode(SDL_FALSE);
-			right_mouse_down = false;
-		}
+		camera->set_radius(player->position); // reset radius
+		std::cout << "radius: " + std::to_string(camera->radius) << std::endl;
 		return true;
 	}
 
@@ -184,18 +174,19 @@ void PlayMode::update(float elapsed) {
 
 	//move camera:
 	{
-
 		//combine inputs into a move:
-		constexpr float PlayerSpeed = 30.0f;
+		// constexpr float PlayerSpeed = 30.0f;
 		glm::vec2 move = glm::vec2(0.0f);
 		if (left.pressed && !right.pressed) move.x =-1.0f;
 		if (!left.pressed && right.pressed) move.x = 1.0f;
 		if (down.pressed && !up.pressed) move.y =-1.0f;
 		if (!down.pressed && up.pressed) move.y = 1.0f;
-		player->position.y += move.y * PlayerSpeed * elapsed;
-		player->position.x += move.x * PlayerSpeed * elapsed;
-		camera->transform->position.y += move.y * PlayerSpeed * elapsed;
-		camera->transform->position.x += move.x * PlayerSpeed * elapsed;
+		// camera->set_zoom(move.y*PlayerSpeed*elapsed);
+		// camera->set_radius(player->position); // reset radius
+		// player->position.y += move.y * PlayerSpeed * elapsed;
+		// player->position.x += move.x * PlayerSpeed * elapsed;
+		// camera->transform->position.y += move.y * PlayerSpeed * elapsed;
+		// camera->transform->position.x += move.x * PlayerSpeed * elapsed;
 
 		// //make it so that moving diagonally doesn't go faster:
 		// if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
@@ -224,6 +215,12 @@ void PlayMode::update(float elapsed) {
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	//update camera aspect ratio for drawable:
+	camera->transform->rotation =
+		glm::angleAxis(camera->azimuth, glm::vec3(0.0f, 0.0f, 1.0f))
+		* glm::angleAxis(0.5f * 3.1415926f + -camera->elevation, glm::vec3(1.0f, 0.0f, 0.0f))
+	;
+	camera->transform->position = camera->target + camera->radius * (camera->transform->rotation * glm::vec3(0.0f, 0.0f, 1.0f));
+	camera->transform->scale = glm::vec3(1.0f);
 	camera->aspect = float(drawable_size.x) / float(drawable_size.y);
 
 	//set up light type and position for lit_color_texture_program:

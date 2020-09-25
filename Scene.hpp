@@ -98,17 +98,17 @@ struct Scene {
 
 		float dist = 0.0f;
 		float angle  = 0.0f;
+
+		float radius;
+		float azimuth = 0.3f; //angle ccw of -y axis, in radians, [-pi,pi]
+		float elevation = 0.2f; //angle above ground, in radians, [-pi,pi]
+		glm::vec3 target = glm::vec3(0.0f);
+		bool flip_x = false; //flip x inputs when moving? (used to handle situations where camera is upside-down)
 		//computed from the above:
 		glm::mat4 make_projection() const;
 
-		float get_horizontal_dist();
-		float get_vertical_dist();
-		void reset_pitch_yaw_roll();
-		void reset_dist(glm::vec3 position);
-		void set_zoom(float mouse_wheel_offset); // adjust dist_to
-		void set_pitch(float delta_mouse_y);
-		void set_angle(float delta_mouse_x); // adjust angle
-		void set_position(Scene::Transform* player);
+		void set_radius(glm::vec3 position);
+		void set_zoom(float mouse_wheel_offset);
 
 	};
 

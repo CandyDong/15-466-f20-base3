@@ -99,64 +99,20 @@ glm::mat4 Scene::Camera::make_projection() const {
 	return glm::infinitePerspective( fovy, aspect, near );
 }
 
-float Scene::Camera::get_horizontal_dist() {
-	return dist * cos(pitch);
+void Scene::Camera::set_radius(glm::vec3 position) {
+	radius = sqrt(pow(transform->position.y - position.y, 2) + pow(transform->position.z -position.z, 2));
 }
-float Scene::Camera::get_vertical_dist() {
-	return dist * sin(pitch);
-}
-void Scene::Camera::reset_dist(glm::vec3 position) {
-	// std::cout << "position: " + glm::to_string(position) << std::endl;
-	// std::cout << "camera position: " + glm::to_string(transform->position) << std::endl;
-	dist = sqrt(pow(transform->position.y - position.y, 2) + pow(transform->position.z -position.z, 2));
-}
-void Scene::Camera::reset_pitch_yaw_roll() {
-	glm::quat q = transform->rotation;
-	glm::vec3 euler = get_euler_from_quat(q);
-	roll = euler.x;
-	pitch = euler.y;
-	yaw = euler.z;
-	std::cout << "roll, pitch, yaw: " + glm::to_string(euler) << std::endl; 
-	// roll = atan2(valType(2) * (q.x * q.y + q.w * q.z), q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z);
-	// pitch = atan2(valType(2) * (q.y * q.z + q.w * q.x), q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z);
-	// yaw = asin(valType(-2) * (q.x * q.z - q.w * q.y));
-}
+
 void Scene::Camera::set_zoom(float y_offset) { 
 	// dist -= (mouse_wheel_offset*0.1f);
 	//make it so that moving diagonally doesn't go faster:
-	float move = y_offset * 0.1f;
+	std::cout << "y_offset: " +std::to_string(y_offset) << std::endl;
+	float move = y_offset;
 
 	glm::mat4x3 frame = transform->make_local_to_parent();
 	glm::vec3 forward = -frame[2];
 	transform->position += move * forward;
-}// adjust dist_to
-void Scene::Camera::set_pitch(float delta_mouse_y) {
-	pitch -= (delta_mouse_y*0.1f);
-	if (pitch > M_PI_2) {
-		pitch -= M_PI_2;
-	} else if (pitch < 0) {
-		pitch += M_PI_2;
-	}
-}
-void Scene::Camera::set_angle(float delta_mouse_x) {
-	angle -= (delta_mouse_x*0.1f);
-	if (angle > M_PI*2) {
-		angle -= M_PI*2;
-	} else if (angle < 0) {
-		angle += M_PI*2;
-	}
-}// adjust angle
-void Scene::Camera::set_position(Scene::Transform* player) {
-	glm::vec3 euler = get_euler_from_quat(player->rotation);
-	glm::vec3 pos = player->position;
-	float theta = euler.y + angle;
-	float horizontal_dist = get_horizontal_dist();
-	float vertical_dist = get_vertical_dist();
-	float offset_x = horizontal_dist*sin(theta);
-	float offset_z = horizontal_dist*cos(theta);
-	transform->position.x = pos.x - offset_x;
-	transform->position.y = pos.y + vertical_dist;
-	transform->position.z = pos.z - offset_z;
+	std::cout << "delta: " + glm::to_string(move*forward) + " forward: "+ glm::to_string(forward) << std::endl;
 }
 //-------------------------
 
