@@ -91,8 +91,25 @@ struct Scene {
 		float fovy = glm::radians(60.0f); //vertical fov (in radians)
 		float aspect = 1.0f; //x / y
 		float near = 0.01f; //near plane
+
+		float pitch;
+		float yaw;
+		float roll;
+
+		float dist = 0.0f;
+		float angle  = 0.0f;
 		//computed from the above:
 		glm::mat4 make_projection() const;
+
+		float get_horizontal_dist();
+		float get_vertical_dist();
+		void reset_pitch_yaw_roll();
+		void reset_dist(glm::vec3 position);
+		void set_zoom(float mouse_wheel_offset); // adjust dist_to
+		void set_pitch(float delta_mouse_y);
+		void set_angle(float delta_mouse_x); // adjust angle
+		void set_position(Scene::Transform* player);
+
 	};
 
 	struct Light {
