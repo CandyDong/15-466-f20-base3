@@ -141,10 +141,16 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			return true;
 		} 
 	} else if (evt.type == SDL_MOUSEWHEEL) {
-		camera->set_zoom(evt.wheel.y);
-		camera->set_radius(player->position); // reset radius
-		std::cout << "radius: " + std::to_string(camera->radius) << std::endl;
-		return true;
+		// camera->set_zoom(evt.wheel.y);
+		// camera->set_radius(player->position); // reset radius
+		// std::cout << "radius: " + std::to_string(camera->radius) << std::endl;
+		//mouse wheel: dolly
+		if (evt.type == SDL_MOUSEWHEEL) {
+			camera->radius *= std::pow(0.5f, 0.1f * evt.wheel.y);
+			if (camera->radius < 1e-1f) camera->radius = 1e-1f;
+			if (camera->radius > 1e6f) camera->radius = 1e6f;
+			return true;
+		}
 	}
 
 	return false;
