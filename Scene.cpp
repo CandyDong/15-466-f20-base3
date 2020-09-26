@@ -74,27 +74,6 @@ glm::mat4x3 Scene::Transform::make_world_to_local() const {
 }
 
 //-------------------------
-
-float degree_to_radian(float degree) {
-	return degree/180.0f*M_PI;
-}
-
-glm::vec3 get_euler_from_quat(glm::quat q) {
-	float roll = atan2(2 * (q.w * q.x + q.y * q.z),
-            1 - 2 * (q.x * q.x + q.y * q.y));
-	float pitch = asin(2 * (q.w  * q.y - q.z * q.y));
-	float yaw = atan2(2 * (q.w  * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z));
-	if (pitch > M_PI_2) {
-		pitch -= M_PI_2;
-		yaw += M_PI;
-		roll += M_PI;
-	}
-	if (roll > M_PI) {
-		roll = M_PI*2 - roll;
-	}
-	return glm::vec3(roll, pitch, yaw);
-}
-
 glm::mat4 Scene::Camera::make_projection() const {
 	return glm::infinitePerspective( fovy, aspect, near );
 }
@@ -104,6 +83,7 @@ void Scene::Camera::init_camera(glm::vec3 position) {
 	glm::vec3 dist = transform->position - position;
 	elevation = atan2(dist.z, -dist.y);
 	azimuth = atan2(dist.x, -dist.y);
+	target = position;
 }
 //-------------------------
 

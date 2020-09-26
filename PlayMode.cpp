@@ -9,6 +9,7 @@
 #include "data_path.hpp"
 
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include <random>
 
@@ -44,24 +45,16 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 	//get pointers to leg for convenience:
 	for (auto &transform : scene.transforms) {
 		if (transform.name == "Cube") player = &transform;
-		// if (transform.name == "Hip.FL") hip = &transform;
-		// else if (transform.name == "UpperLeg.FL") upper_leg = &transform;
-		// else if (transform.name == "LowerLeg.FL") lower_leg = &transform;
+		else if (transform.name == "Plane") plane = &transform;
 	}
 	if (player == nullptr) throw std::runtime_error("Player not found.");
-	// if (hip == nullptr) throw std::runtime_error("Hip not found.");
-	// if (upper_leg == nullptr) throw std::runtime_error("Upper leg not found.");
-	// if (lower_leg == nullptr) throw std::runtime_error("Lower leg not found.");
-
-	// hip_base_rotation = hip->rotation;
-	// upper_leg_base_rotation = upper_leg->rotation;
-	// lower_leg_base_rotation = lower_leg->rotation;
+	if (plane == nullptr) throw std::runtime_error("Plane not found.");
 
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
 	camera->init_camera(player->position);
-	
+
 	//start music loop playing:
 	// (note: position will be over-ridden in update())
 	// leg_tip_loop = Sound::loop_3D(*dusty_floor_sample, 1.0f, get_leg_tip_position(), 10.0f);
@@ -120,29 +113,19 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			delta.x *= float(window_size.y) / float(window_size.x);
 			delta.y = evt.motion.yrel / float(window_size.y) * -2.0f;
 
-			if (SDL_GetModState() & KMOD_SHIFT) {
-				//shift: pan
-				glm::mat3 frame = glm::mat3_cast(camera->transform->rotation);
-				camera->target -= frame[0] * (delta.x * camera->radius) + frame[1] * (delta.y * camera->radius);
-			} else {
-				//no shift: tumble
-				camera->azimuth -= 3.0f * delta.x * (camera->flip_x ? -1.0f : 1.0f);
-				camera->elevation -= 3.0f * delta.y;
+			camera->azimuth -= 3.0f * delta.x * (camera->flip_x ? -1.0f : 1.0f);
+			camera->elevation -= 3.0f * delta.y;
 
-				camera->azimuth /= 2.0f * 3.1415926f;
-				camera->azimuth -= std::round(camera->azimuth);
-				camera->azimuth *= 2.0f * 3.1415926f;
+			camera->azimuth /= 2.0f * 3.1415926f;
+			camera->azimuth -= std::round(camera->azimuth);
+			camera->azimuth *= 2.0f * 3.1415926f;
 
-				camera->elevation /= 2.0f * 3.1415926f;
-				camera->elevation -= std::round(camera->elevation);
-				camera->elevation *= 2.0f * 3.1415926f;
-			}
+			camera->elevation /= 2.0f * 3.1415926f;
+			camera->elevation -= std::round(camera->elevation);
+			camera->elevation *= 2.0f * 3.1415926f;
 			return true;
 		} 
 	} else if (evt.type == SDL_MOUSEWHEEL) {
-		// camera->set_zoom(evt.wheel.y);
-		// camera->set_radius(player->position); // reset radius
-		// std::cout << "radius: " + std::to_string(camera->radius) << std::endl;
 		//mouse wheel: dolly
 		if (evt.type == SDL_MOUSEWHEEL) {
 			camera->radius *= std::pow(0.5f, 0.1f * evt.wheel.y);
@@ -160,48 +143,37 @@ void PlayMode::update(float elapsed) {
 	//slowly rotates through [0,1):
 	// wobble += elapsed / 10.0f;
 	// wobble -= std::floor(wobble);
-
-	// hip->rotation = hip_base_rotation * glm::angleAxis(
-	// 	glm::radians(5.0f * std::sin(wobble * 2.0f * float(M_PI))),
-	// 	glm::vec3(0.0f, 1.0f, 0.0f)
-	// );
-	// upper_leg->rotation = upper_leg_base_rotation * glm::angleAxis(
-	// 	glm::radians(7.0f * std::sin(wobble * 2.0f * 2.0f * float(M_PI))),
-	// 	glm::vec3(0.0f, 0.0f, 1.0f)
-	// );
-	// lower_leg->rotation = lower_leg_base_rotation * glm::angleAxis(
-	// 	glm::radians(10.0f * std::sin(wobble * 3.0f * 2.0f * float(M_PI))),
-	// 	glm::vec3(0.0f, 0.0f, 1.0f)
-	// );
-
+	
 	// //move sound to follow leg tip position:
 	// leg_tip_loop->set_position(get_leg_tip_position(), 1.0f / 60.0f);
 
 	//move camera:
 	{
 		//combine inputs into a move:
-		// constexpr float PlayerSpeed = 30.0f;
+		constexpr float PlayerSpeed = 30.0f;
 		glm::vec2 move = glm::vec2(0.0f);
 		if (left.pressed && !right.pressed) move.x =-1.0f;
 		if (!left.pressed && right.pressed) move.x = 1.0f;
 		if (down.pressed && !up.pressed) move.y =-1.0f;
 		if (!down.pressed && up.pressed) move.y = 1.0f;
-		// camera->set_zoom(move.y*PlayerSpeed*elapsed);
-		// camera->set_radius(player->position); // reset radius
-		// player->position.y += move.y * PlayerSpeed * elapsed;
-		// player->position.x += move.x * PlayerSpeed * elapsed;
-		// camera->transform->position.y += move.y * PlayerSpeed * elapsed;
-		// camera->transform->position.x += move.x * PlayerSpeed * elapsed;
-
-		// //make it so that moving diagonally doesn't go faster:
-		// if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
-
-		// glm::mat4x3 frame = camera->transform->make_local_to_parent();
-		// glm::vec3 right = frame[0];
-		// //glm::vec3 up = frame[1];
-		// glm::vec3 forward = -frame[2];
-
-		// camera->transform->position += move.x * right + move.y * forward;
+		
+		// move player
+		if ((camera->azimuth >= -M_PI_4) && (camera->azimuth < M_PI_4)) {
+			player->position.y += move.y * PlayerSpeed * elapsed;
+			player->position.x += move.x * PlayerSpeed * elapsed;
+		} else if ((camera->azimuth >= M_PI_4) && (camera->azimuth < (M_PI - M_PI_4))) {
+			player->position.y += move.x * PlayerSpeed * elapsed;
+			player->position.x -= move.y * PlayerSpeed * elapsed;
+		} else if ((camera->azimuth >= (M_PI - M_PI_4)) && (camera->azimuth < (-M_PI + M_PI_4))) {
+			player->position.y -= move.y * PlayerSpeed * elapsed;
+			player->position.x -= move.x * PlayerSpeed * elapsed;
+		} else {
+			player->position.y -= move.x * PlayerSpeed * elapsed;
+			player->position.x += move.y * PlayerSpeed * elapsed;
+		}
+		// move camera along with the player
+		camera->target = player->position;
+		
 	}
 
 	{ //update listener to camera position:
