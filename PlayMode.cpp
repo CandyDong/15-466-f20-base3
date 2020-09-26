@@ -37,8 +37,8 @@ Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
 	});
 });
 
-Load< Sound::Sample > dusty_floor_sample(LoadTagDefault, []() -> Sound::Sample const * {
-	return new Sound::Sample(data_path("dusty-floor.opus"));
+Load< Sound::Sample > zombie_sample_1(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("zombie_1.opus"));
 });
 
 PlayMode::PlayMode() : scene(*hexapod_scene) {
@@ -57,7 +57,7 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 
 	//start music loop playing:
 	// (note: position will be over-ridden in update())
-	// leg_tip_loop = Sound::loop_3D(*dusty_floor_sample, 1.0f, get_leg_tip_position(), 10.0f);
+	zombie_1 = Sound::loop_3D(*zombie_sample_1, 1.0f, glm::vec3(0,0,0), 10.0f);
 }
 
 PlayMode::~PlayMode() {
@@ -144,8 +144,8 @@ void PlayMode::update(float elapsed) {
 	// wobble += elapsed / 10.0f;
 	// wobble -= std::floor(wobble);
 	
-	// //move sound to follow leg tip position:
-	// leg_tip_loop->set_position(get_leg_tip_position(), 1.0f / 60.0f);
+	//move sound to follow leg tip position:
+	zombie_1->set_position(glm::vec3(0,0,0), 1.0f / 60.0f);
 
 	//move camera:
 	{
