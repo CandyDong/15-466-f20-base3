@@ -164,12 +164,12 @@ void PlayMode::update(float elapsed) {
 		} else if ((camera->azimuth >= M_PI_4) && (camera->azimuth < (M_PI - M_PI_4))) {
 			player->position.y += move.x * PlayerSpeed * elapsed;
 			player->position.x -= move.y * PlayerSpeed * elapsed;
-		} else if ((camera->azimuth >= (M_PI - M_PI_4)) && (camera->azimuth < (-M_PI + M_PI_4))) {
-			player->position.y -= move.y * PlayerSpeed * elapsed;
-			player->position.x -= move.x * PlayerSpeed * elapsed;
-		} else {
+		} else if ((camera->azimuth >= (-M_PI + M_PI_4)) && (camera->azimuth < -M_PI_4)) {
 			player->position.y -= move.x * PlayerSpeed * elapsed;
 			player->position.x += move.y * PlayerSpeed * elapsed;
+		} else {
+			player->position.y -= move.y * PlayerSpeed * elapsed;
+			player->position.x -= move.x * PlayerSpeed * elapsed;
 		}
 		// move camera along with the player
 		camera->target = player->position;
