@@ -92,17 +92,10 @@ struct Scene {
 		float aspect = 1.0f; //x / y
 		float near = 0.01f; //near plane
 
-		float pitch;
-		float yaw;
-		float roll;
-
-		float dist = 0.0f;
-		float angle  = 0.0f;
-
 		float radius;
 		float azimuth; //angle ccw of -y axis, in radians, [-pi,pi]
 		float elevation; //angle above ground, in radians, [-pi,pi]
-		glm::vec3 target = glm::vec3(0.0f);
+		glm::vec3 target;
 		bool flip_x = false; //flip x inputs when moving? (used to handle situations where camera is upside-down)
 		//computed from the above:
 		glm::mat4 make_projection() const;

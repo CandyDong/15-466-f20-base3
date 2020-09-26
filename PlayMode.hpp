@@ -30,19 +30,12 @@ struct PlayMode : Mode {
 
 	// cube 
 	Scene::Transform *player = nullptr;
+	// Plane
+	Scene::Transform *plane = nullptr;
 
 	// mouse control
 	bool left_mouse_down = false;
 	bool right_mouse_down = false;
-	
-	//hexapod leg to wobble:
-	// Scene::Transform *hip = nullptr;
-	// Scene::Transform *upper_leg = nullptr;
-	// Scene::Transform *lower_leg = nullptr;
-	// glm::quat hip_base_rotation;
-	// glm::quat upper_leg_base_rotation;
-	// glm::quat lower_leg_base_rotation;
-	// float wobble = 0.0f;
 
 	// glm::vec3 get_leg_tip_position();
 
