@@ -69,6 +69,10 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 }
 
 PlayMode::~PlayMode() {
+	for (int i = 0; i < board.size(); i++) {
+		Tile* tile = board[i];
+		delete tile;
+	}
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
