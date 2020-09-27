@@ -239,6 +239,8 @@ void PlayMode::update(float elapsed) {
       theta = UP - player_dir;
       player_dir = UP;
 		}
+		
+    player->rotation = player->rotation * glm::quat(cos(theta/2), 0, 0, sin(theta/2));
 
 		// move player
 		if ((camera->azimuth >= -M_PI_4) && (camera->azimuth < M_PI_4)) {
@@ -254,9 +256,6 @@ void PlayMode::update(float elapsed) {
 			player->position.y -= player_move.y * PlayerSpeed * elapsed;
 			player->position.x -= player_move.x * PlayerSpeed * elapsed;
 		}
-
-
-    player->rotation = player->rotation * glm::quat(cos(theta/2), 0, 0, sin(theta/2));
 
 		// move active tile
 		glm::ivec2 tile_move = glm::ivec2(0);
