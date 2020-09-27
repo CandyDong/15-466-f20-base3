@@ -45,10 +45,18 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 	//get pointers to leg for convenience:
 	for (auto &transform : scene.transforms) {
 		if (transform.name == "Cube") player = &transform;
-		else if (transform.name.find("Plate_Pavement") != std::string::npos) tiles.emplace_back(&transform);
+		else if (transform.name.find("Plate_Pavement") != std::string::npos) {
+			float pos_x = transform.position.x;
+			float pos_y = transform.position.y;
+			// width of each tile = 3
+			int8_t x = static_cast<int8_t>(pos_x / 3.0f);
+			int8_t y = static_cast<int8_t>(pos_y / 3.0f);
+			tiles[x+offset][y+offset] = &transform;
+		} 
 	}
 	if (player == nullptr) throw std::runtime_error("Player not found.");
-	if (tiles.size() != 7*7) throw std::runtime_error("Plane should be 7x7.");
+
+	active_tile = tiles[active_tile_index.x][active_tile_index.y];
 
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
@@ -67,37 +75,73 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 	if (evt.type == SDL_KEYDOWN) {
 		if (evt.key.keysym.sym == SDLK_a) {
-			left.downs += 1;
+			a.downs += 1;
+			a.pressed = true;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_d) {
+			d.downs += 1;
+			d.pressed = true;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_w) {
+			w.downs += 1;
+			w.pressed = true;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_s) {
+			s.downs += 1;
+			s.pressed = true;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_LEFT) {
 			left.pressed = true;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_d) {
-			right.downs += 1;
+		} else if (evt.key.keysym.sym == SDLK_RIGHT) {
 			right.pressed = true;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_w) {
-			up.downs += 1;
+		} else if (evt.key.keysym.sym == SDLK_UP) {
 			up.pressed = true;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_s) {
-			down.downs += 1;
+		} else if (evt.key.keysym.sym == SDLK_DOWN) {
 			down.pressed = true;
 			return true;
-		}
+		} 
 	} else if (evt.type == SDL_KEYUP) {
 		if (evt.key.keysym.sym == SDLK_a) {
-			left.pressed = false;
+			a.pressed = false;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_d) {
-			right.pressed = false;
+			d.pressed = false;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_w) {
-			up.pressed = false;
+			w.pressed = false;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_s) {
-			down.pressed = false;
+			s.pressed = false;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_LEFT) {
+			if (left.pressed) {
+				left.released += 1;
+				left.pressed = false;
+			}
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_RIGHT) {
+			if (right.pressed) {
+				right.released += 1;
+				right.pressed = false;
+			}
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_UP) {
+			if (up.pressed) {
+				up.released += 1;
+				up.pressed = false;
+			}
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_DOWN) {
+			if (down.pressed) {
+				down.released += 1;
+				down.pressed = false;
+			}
 			return true;
 		}
-	}//----- trackball-style camera controls -----
+	} //----- trackball-style camera controls -----
 	else if (evt.type == SDL_MOUSEBUTTONDOWN) {
 		if (evt.button.button == SDL_BUTTON_LEFT) {
 			//when camera is upside-down at rotation start, azimuth rotation should be reversed:
@@ -138,27 +182,8 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 	return false;
 }
 
-glm::uvec2 PlayMode::getActiveTileCoord() {
-	if (active_tile == nullptr) {
-		// initialize to the centre tile
-		for (int i = 0; i < tiles.size(); i++) {
-			Scene::Transform *tile = tiles[i];
-			if (tile->position.x == 0 && tile->position.y == 0) {
-				active_tile = tile;
-				return glm::uvec2(0, 0);
-			}
-		}
-		throw std::runtime_error("Active tile cannot be initialized!");
-	}
-
-	float pos_x = active_tile->position.x;
-	float pos_y = active_tile->position.y;
-
-	// width of each tile = 3
-	uint8_t x = static_cast<uint8_t>(pos_x / 3);
-	uint8_t y = static_cast<uint8_t>(pos_y / 3);
-	return glm::uvec2(x,y);
-
+glm::ivec2 PlayMode::getActiveTileCoord() {
+	return active_tile_index - glm::ivec2(offset);
 }
 
 void PlayMode::update(float elapsed) {
@@ -174,26 +199,74 @@ void PlayMode::update(float elapsed) {
 	{
 		//combine inputs into a move:
 		constexpr float PlayerSpeed = 30.0f;
-		glm::vec2 move = glm::vec2(0.0f);
-		if (left.pressed && !right.pressed) move.x =-1.0f;
-		if (!left.pressed && right.pressed) move.x = 1.0f;
-		if (down.pressed && !up.pressed) move.y =-1.0f;
-		if (!down.pressed && up.pressed) move.y = 1.0f;
-		
+		glm::vec2 player_move = glm::vec2(0.0f);
+		if (a.pressed && !d.pressed) player_move.x =-1.0f;
+		if (!a.pressed && d.pressed) player_move.x = 1.0f;
+		if (s.pressed && !w.pressed) player_move.y =-1.0f;
+		if (!s.pressed && w.pressed) player_move.y = 1.0f;
+
 		// move player
 		if ((camera->azimuth >= -M_PI_4) && (camera->azimuth < M_PI_4)) {
-			player->position.y += move.y * PlayerSpeed * elapsed;
-			player->position.x += move.x * PlayerSpeed * elapsed;
+			player->position.y += player_move.y * PlayerSpeed * elapsed;
+			player->position.x += player_move.x * PlayerSpeed * elapsed;
 		} else if ((camera->azimuth >= M_PI_4) && (camera->azimuth < (M_PI - M_PI_4))) {
-			player->position.y += move.x * PlayerSpeed * elapsed;
-			player->position.x -= move.y * PlayerSpeed * elapsed;
+			player->position.y += player_move.x * PlayerSpeed * elapsed;
+			player->position.x -= player_move.y * PlayerSpeed * elapsed;
 		} else if ((camera->azimuth >= (-M_PI + M_PI_4)) && (camera->azimuth < -M_PI_4)) {
-			player->position.y -= move.x * PlayerSpeed * elapsed;
-			player->position.x += move.y * PlayerSpeed * elapsed;
+			player->position.y -= player_move.x * PlayerSpeed * elapsed;
+			player->position.x += player_move.y * PlayerSpeed * elapsed;
 		} else {
-			player->position.y -= move.y * PlayerSpeed * elapsed;
-			player->position.x -= move.x * PlayerSpeed * elapsed;
+			player->position.y -= player_move.y * PlayerSpeed * elapsed;
+			player->position.x -= player_move.x * PlayerSpeed * elapsed;
 		}
+
+		// move active tile
+		glm::ivec2 tile_move = glm::ivec2(0);
+		if (left.released == 1) {
+			tile_move.x = -1;
+			left.released = 0;
+		}
+		if (right.released == 1) {
+			tile_move.x = 1;
+			right.released = 0;
+		}
+		if (down.released == 1) {
+			tile_move.y = -1;
+			down.released = 0;
+		}
+		if (up.released == 1) {
+			tile_move.y = 1;
+			up.released = 0;
+		}
+
+		auto handleBoundry = [](glm::ivec2 &coord, int8_t max, int8_t min) {
+			if (coord.x >= max) {
+				coord.x = max-1;
+			} else if (coord.x < min) {
+				coord.x = min;
+			}
+			if (coord.y >= max) {
+				coord.y = max-1;
+			} else if (coord.y < min) {
+				coord.y = min;
+			}
+		};
+		
+		active_tile->position.z = 0.15; //original position read from blender
+		if ((camera->azimuth >= -M_PI_4) && (camera->azimuth < M_PI_4)) {
+			active_tile_index += tile_move;
+		} else if ((camera->azimuth >= M_PI_4) && (camera->azimuth < (M_PI - M_PI_4))) {
+			active_tile_index += glm::ivec2(-tile_move.y, tile_move.x);
+		} else if ((camera->azimuth >= (-M_PI + M_PI_4)) && (camera->azimuth < -M_PI_4)) {
+			active_tile_index += glm::ivec2(tile_move.y, -tile_move.x);
+		} else {
+			active_tile_index += glm::ivec2(-tile_move.x, -tile_move.y);
+		}
+		handleBoundry(active_tile_index, 7, 0);
+		active_tile = tiles[active_tile_index.x][active_tile_index.y];
+
+		active_tile->position.z = -0.15;
+
 		// move camera along with the player
 		camera->target = player->position;
 		
@@ -211,6 +284,10 @@ void PlayMode::update(float elapsed) {
 	right.downs = 0;
 	up.downs = 0;
 	down.downs = 0;
+	w.downs = 0;
+	s.downs = 0;
+	a.downs = 0;
+	d.downs = 0;
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
@@ -261,13 +338,13 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 
-		glm::uvec2 active_tile_coord = getActiveTileCoord();
+		glm::ivec2 active_tile_coord = getActiveTileCoord();
 		lines.draw_text("Active tile: " + std::to_string(active_tile_coord.x) + ", " + std::to_string(active_tile_coord.y),
-			glm::vec3(0.0f, 0.0f, 0.0),
+			glm::vec3(-aspect + 0.1f * H, 1.0 - H, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
 		lines.draw_text("Active tile: " + std::to_string(active_tile_coord.x) + ", " + std::to_string(active_tile_coord.y),
-			glm::vec3(0.0f - ofs, 0.0f - ofs, 0.0),
+			glm::vec3(-aspect + 0.1f * H + ofs, 1.0 - H + ofs, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 
