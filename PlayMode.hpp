@@ -7,7 +7,7 @@
 
 #include <vector>
 #include <deque>
-#include <array>
+#include <map>
 
 struct PlayMode : Mode {
 	PlayMode();
@@ -17,6 +17,7 @@ struct PlayMode : Mode {
 	virtual bool handle_event(SDL_Event const &, glm::uvec2 const &window_size) override;
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const &drawable_size) override;
+	virtual void initialize_board() override;
 
 	//----- game state -----
 
@@ -25,22 +26,42 @@ struct PlayMode : Mode {
 		uint8_t downs = 0;
 		uint8_t pressed = 0;
 		uint8_t released = 0;
-	} w, s, a, d, left, right, down, up;
+	} w, s, a, d, left, right, down, up, space;
+
+	enum Character { none, zombie, human };
+
+	struct Tile {
+		Tile(Scene::Transform *t, Character c) {
+			transform = t;
+			character = c;
+		} 
+	    Scene::Transform *transform = nullptr;
+	    Character character = none;
+	};
 
 	//local copy of the game scene (so code can change it during gameplay):
 	Scene scene;
 
 	// scene models
 	Scene::Transform *player = nullptr;
-	std::array<std::array<Scene::Transform *, 7>, 7> tiles; 
-	uint8_t tile_size = 3;
-	uint8_t plane_size = 7;
-	uint8_t offset = tile_size;
+
+	// maps two coords to a tile
+	std::map<std::pair<int8_t, int8_t>, Tile *> tileCoordMap; 
+	std::vector<Tile *> board;
+
+	uint8_t TILE_SIZE = 3;
+	uint8_t BOARD_WIDTH = 7;
+	uint8_t OFFSET = TILE_SIZE;
+	
+	int zombie_count = 5;
+	int human_count = 5;
 
 	// active 
 	glm::ivec2 getActiveTileCoord();
 	glm::ivec2 active_tile_index = glm::ivec2(3, 3);
-	Scene::Transform *active_tile = nullptr;
+	Tile *active_tile = nullptr;
+
+	int points = 0;
 
 	//music coming from the tip of the leg (as a demonstration):
 	std::shared_ptr< Sound::PlayingSample > zombie_1;
