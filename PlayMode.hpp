@@ -39,7 +39,7 @@ struct PlayMode : Mode {
 
 	// active 
 	glm::ivec2 getActiveTileCoord();
-	glm::ivec2 active_tile_index = glm::ivec2(3, 4);
+	glm::ivec2 active_tile_index = glm::ivec2(3, 3);
 	Scene::Transform *active_tile = nullptr;
 
 	//music coming from the tip of the leg (as a demonstration):
