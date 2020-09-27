@@ -56,6 +56,8 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 	}
 	if (player == nullptr) throw std::runtime_error("Player not found.");
 
+	active_tile = tiles[active_tile_index.x][active_tile_index.y];
+
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
@@ -181,20 +183,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 glm::ivec2 PlayMode::getActiveTileCoord() {
-	if (active_tile == nullptr) {
-		// initialize to the centre tile
-		active_tile = tiles[offset][offset];
-		return glm::ivec2(0, 0);
-	}
-
-	float pos_x = active_tile->position.x;
-	float pos_y = active_tile->position.y;
-
-	// width of each tile = 3
-	int8_t x = static_cast<int8_t>(pos_x / 3);
-	int8_t y = static_cast<int8_t>(pos_y / 3);
-	return glm::ivec2(x,y);
-
+	return active_tile_index - glm::ivec2(offset);
 }
 
 void PlayMode::update(float elapsed) {
@@ -263,19 +252,21 @@ void PlayMode::update(float elapsed) {
 			}
 		};
 		
-		glm::ivec2 active_tile_index = getActiveTileCoord() + glm::ivec2(offset);
-		glm::ivec2 new_tile_index = active_tile_index;
+		active_tile->position.z = 0.15; //original position read from blender
 		if ((camera->azimuth >= -M_PI_4) && (camera->azimuth < M_PI_4)) {
-			new_tile_index += tile_move;
+			active_tile_index += tile_move;
 		} else if ((camera->azimuth >= M_PI_4) && (camera->azimuth < (M_PI - M_PI_4))) {
-			new_tile_index += glm::ivec2(-tile_move.y, tile_move.x);
+			active_tile_index += glm::ivec2(-tile_move.y, tile_move.x);
 		} else if ((camera->azimuth >= (-M_PI + M_PI_4)) && (camera->azimuth < -M_PI_4)) {
-			new_tile_index += glm::ivec2(-tile_move.x, -tile_move.y);
+			active_tile_index += glm::ivec2(tile_move.y, -tile_move.x);
 		} else {
-			new_tile_index += glm::ivec2(tile_move.y, -tile_move.x);
+			active_tile_index += glm::ivec2(-tile_move.x, -tile_move.y);
 		}
-		handleBoundry(new_tile_index, 7, 0);
-		active_tile = tiles[new_tile_index.x][new_tile_index.y];
+		handleBoundry(active_tile_index, 7, 0);
+		active_tile = tiles[active_tile_index.x][active_tile_index.y];
+
+		active_tile->position.z = -0.15;
+
 		// move camera along with the player
 		camera->target = player->position;
 		

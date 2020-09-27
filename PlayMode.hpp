@@ -32,13 +32,14 @@ struct PlayMode : Mode {
 
 	// scene models
 	Scene::Transform *player = nullptr;
-	std::array<std::array<Scene::Transform *, 7>, 7> tiles;
+	std::array<std::array<Scene::Transform *, 7>, 7> tiles; 
 	uint8_t tile_size = 3;
 	uint8_t plane_size = 7;
 	uint8_t offset = tile_size;
 
 	// active 
 	glm::ivec2 getActiveTileCoord();
+	glm::ivec2 active_tile_index = glm::ivec2(3, 4);
 	Scene::Transform *active_tile = nullptr;
 
 	//music coming from the tip of the leg (as a demonstration):
