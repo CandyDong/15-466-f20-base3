@@ -28,14 +28,17 @@ struct PlayMode : Mode {
 	//local copy of the game scene (so code can change it during gameplay):
 	Scene scene;
 
-	// cube 
+	// scene models
 	Scene::Transform *player = nullptr;
+	std::vector<Scene::Transform *> tiles;
 
 	// mouse control
 	bool left_mouse_down = false;
 	bool right_mouse_down = false;
 
-	// glm::vec3 get_leg_tip_position();
+	// active 
+	glm::uvec2 getActiveTileCoord();
+	Scene::Transform *active_tile = nullptr;
 
 	//music coming from the tip of the leg (as a demonstration):
 	std::shared_ptr< Sound::PlayingSample > zombie_1;

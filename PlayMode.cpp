@@ -45,8 +45,10 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 	//get pointers to leg for convenience:
 	for (auto &transform : scene.transforms) {
 		if (transform.name == "Cube") player = &transform;
+		else if (transform.name.find("Plate_Pavement") != std::string::npos) tiles.emplace_back(&transform);
 	}
 	if (player == nullptr) throw std::runtime_error("Player not found.");
+	if (tiles.size() != 7*7) throw std::runtime_error("Plane should be 7x7.");
 
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
@@ -134,6 +136,29 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 	}
 
 	return false;
+}
+
+glm::uvec2 PlayMode::getActiveTileCoord() {
+	if (active_tile == nullptr) {
+		// initialize to the centre tile
+		for (int i = 0; i < tiles.size(); i++) {
+			Scene::Transform *tile = tiles[i];
+			if (tile->position.x == 0 && tile->position.y == 0) {
+				active_tile = tile;
+				return glm::uvec2(0, 0);
+			}
+		}
+		throw std::runtime_error("Active tile cannot be initialized!");
+	}
+
+	float pos_x = active_tile->position.x;
+	float pos_y = active_tile->position.y;
+
+	// width of each tile = 3
+	uint8_t x = static_cast<uint8_t>(pos_x / 3);
+	uint8_t y = static_cast<uint8_t>(pos_y / 3);
+	return glm::uvec2(x,y);
+
 }
 
 void PlayMode::update(float elapsed) {
@@ -226,15 +251,26 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		));
 
 		constexpr float H = 0.09f;
-		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
+		lines.draw_text("Mouse motion rotates camera; WASD moves player; Mouse wheel zooms in/out",
 			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
 		float ofs = 2.0f / drawable_size.y;
-		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
+		lines.draw_text("Mouse motion rotates camera; WASD moves player; Mouse wheel zooms in/out",
 			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
+		glm::uvec2 active_tile_coord = getActiveTileCoord();
+		lines.draw_text("Active tile: " + std::to_string(active_tile_coord.x) + ", " + std::to_string(active_tile_coord.y),
+			glm::vec3(0.0f, 0.0f, 0.0),
+			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
+		lines.draw_text("Active tile: " + std::to_string(active_tile_coord.x) + ", " + std::to_string(active_tile_coord.y),
+			glm::vec3(0.0f - ofs, 0.0f - ofs, 0.0),
+			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
 	}
 	GL_ERRORS();
 }
