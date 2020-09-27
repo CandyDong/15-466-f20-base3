@@ -44,20 +44,20 @@ Load< Sound::Sample > zombie_sample_1(LoadTagDefault, []() -> Sound::Sample cons
 PlayMode::PlayMode() : scene(*hexapod_scene) {
 	//get pointers to leg for convenience:
 	for (auto &transform : scene.transforms) {
-		if (transform.name == "Cube") player = &transform;
+		if (transform.name == "Zombie") player = &transform;
 		else if (transform.name.find("Plate_Pavement") != std::string::npos) {
 			float pos_x = transform.position.x;
 			float pos_y = transform.position.y;
-			// width of each tile = 3
-			int8_t x = static_cast<int8_t>(pos_x / 3.0f);
-			int8_t y = static_cast<int8_t>(pos_y / 3.0f);
-			tiles[x+offset][y+offset] = &transform;
+			int8_t x = static_cast<int8_t>(pos_x / TILE_SIZE);
+			int8_t y = static_cast<int8_t>(pos_y / TILE_SIZE);
+			Tile *new_tile = new Tile(&transform, none);
+			tileCoordMap[std::make_pair(x+OFFSET, y+OFFSET)] = new_tile;
+		  	board.emplace_back(new_tile);
 		} 
 	}
 	if (player == nullptr) throw std::runtime_error("Player not found.");
-
-	active_tile = tiles[active_tile_index.x][active_tile_index.y];
-
+	active_tile = tileCoordMap[std::make_pair(active_tile_index.x, active_tile_index.y)];
+	
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
@@ -102,7 +102,10 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		} else if (evt.key.keysym.sym == SDLK_DOWN) {
 			down.pressed = true;
 			return true;
-		} 
+		} else if (evt.key.keysym.sym == SDLK_SPACE) {
+		  space.pressed = true;
+		  return true;
+		}
 	} else if (evt.type == SDL_KEYUP) {
 		if (evt.key.keysym.sym == SDLK_a) {
 			a.pressed = false;
@@ -183,7 +186,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 glm::ivec2 PlayMode::getActiveTileCoord() {
-	return active_tile_index - glm::ivec2(offset);
+	return active_tile_index - glm::ivec2(OFFSET);
 }
 
 void PlayMode::update(float elapsed) {
@@ -195,7 +198,6 @@ void PlayMode::update(float elapsed) {
 	//move sound to follow leg tip position:
 	// zombie_1->set_position(glm::vec3(0,0,0), 1.0f / 60.0f);
 
-	//move camera:
 	{
 		//combine inputs into a move:
 		constexpr float PlayerSpeed = 30.0f;
@@ -252,7 +254,8 @@ void PlayMode::update(float elapsed) {
 			}
 		};
 		
-		active_tile->position.z = 0.15; //original position read from blender
+		active_tile->transform->position.z = 0.15; //original position read from blender
+		
 		if ((camera->azimuth >= -M_PI_4) && (camera->azimuth < M_PI_4)) {
 			active_tile_index += tile_move;
 		} else if ((camera->azimuth >= M_PI_4) && (camera->azimuth < (M_PI - M_PI_4))) {
@@ -263,13 +266,21 @@ void PlayMode::update(float elapsed) {
 			active_tile_index += glm::ivec2(-tile_move.x, -tile_move.y);
 		}
 		handleBoundry(active_tile_index, 7, 0);
-		active_tile = tiles[active_tile_index.x][active_tile_index.y];
+		active_tile = tileCoordMap[std::make_pair(active_tile_index.x, active_tile_index.y)];
 
-		active_tile->position.z = -0.15;
+		active_tile->transform->position.z = -0.15;
 
 		// move camera along with the player
 		camera->target = player->position;
-		
+
+		if (space.pressed && active_tile != nullptr) {
+		  if (active_tile->character == zombie) {
+		    points++;
+		  } else if (active_tile->character == human) {
+		    points--;
+		  }
+		  std::cout << "Points: " + std::to_string(points);
+		}
 	}
 
 	{ //update listener to camera position:
@@ -348,8 +359,34 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 
+		lines.draw_text("Points: " + std::to_string(points),
+      glm::vec3(0.0f - ofs, 0.0f - ofs, 0.0),
+      glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+      glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
 	}
 	GL_ERRORS();
+}
+
+void PlayMode::initialize_board() {
+	for (int i = 0; i < zombie_count + human_count; i++) {
+		int r = rand() % BOARD_WIDTH;
+		int c = rand() % BOARD_WIDTH;
+		int index = r * BOARD_WIDTH + c;
+		while (board[index]->character != none) {
+			
+			r = rand() % BOARD_WIDTH;
+			c = rand() % BOARD_WIDTH;
+			index = r * BOARD_WIDTH + c;
+		}
+		if (i < zombie_count) {
+			board[index]->character = zombie;
+			std::cout << "zombie: " + std::to_string(r) + ", " + std::to_string(c) + "\n";
+		} else {
+			board[index]->character = human;
+			std::cout << "human: " + std::to_string(r) + ", " + std::to_string(c) + "\n";
+		}
+	}
 }
 
 // glm::vec3 PlayMode::get_leg_tip_position() {
