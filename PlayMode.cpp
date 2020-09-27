@@ -69,6 +69,10 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 }
 
 PlayMode::~PlayMode() {
+	for (int i = 0; i < board.size(); i++) {
+		Tile* tile = board[i];
+		delete tile;
+	}
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
@@ -339,6 +343,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		));
 
 		constexpr float H = 0.09f;
+		constexpr float point_len = 0.35f;
 		lines.draw_text("Mouse motion rotates camera; WASD moves player; Mouse wheel zooms in/out",
 			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
@@ -360,9 +365,13 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 
 		lines.draw_text("Points: " + std::to_string(points),
-      glm::vec3(0.0f - ofs, 0.0f - ofs, 0.0),
-      glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-      glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+			glm::vec3(aspect - point_len, 1.0 - H, 0.0),
+			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+		lines.draw_text("Points: " + std::to_string(points),
+			glm::vec3(aspect - point_len +ofs, 1.0 - H + ofs, 0.0),
+			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 
 	}
 	GL_ERRORS();
