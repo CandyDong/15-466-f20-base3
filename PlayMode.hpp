@@ -30,8 +30,6 @@ struct PlayMode : Mode {
 
 	// cube 
 	Scene::Transform *player = nullptr;
-	// Plane
-	Scene::Transform *plane = nullptr;
 
 	// mouse control
 	bool left_mouse_down = false;
@@ -41,6 +39,9 @@ struct PlayMode : Mode {
 
 	//music coming from the tip of the leg (as a demonstration):
 	std::shared_ptr< Sound::PlayingSample > zombie_1;
+
+	// outline thickness
+	float outline = 3.0f;
 	
 	//camera:
 	Scene::Camera *camera = nullptr;
