@@ -46,12 +46,14 @@ struct PlayMode : Mode {
 	};
 
 	struct Tile {
-		Tile(Scene::Transform *t) {
+		Tile(Scene::Transform *t, glm::ivec2 ind) {
 			transform = t;
+			index = ind;
 		} 
 	    Scene::Transform *transform = nullptr;
 	    Entity* entity = nullptr;
 	    bool counted = false;
+		glm::ivec2 index;
 	};
 
 	//direction that the character is facing
@@ -65,7 +67,7 @@ struct PlayMode : Mode {
 	Scene scene;
 
 	// scene models
-	Scene::Transform *player = nullptr;
+	Entity *player = nullptr;
 	std::vector<Entity *> humans;
 	std::vector<Entity *> zombies;
 
@@ -84,7 +86,6 @@ struct PlayMode : Mode {
 	// active 
 	glm::ivec2 getActiveTileCoord();
 	glm::ivec2 active_tile_index = glm::ivec2(3, 3);
-	Tile *active_tile = nullptr;
 
 	int points = 0;
 
