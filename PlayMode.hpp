@@ -30,14 +30,27 @@ struct PlayMode : Mode {
 
 	enum Character { none, zombie, human };
 
-	struct Tile {
-		Tile(Scene::Transform *t, Character c) {
-			transform = t;
+	struct Tile; // Forward-declare one of the structs to compile
+	// entity must have a nonnull character value
+	struct Entity {
+		Entity(Scene::Transform *trans, Character c) {
+			transform = trans;
 			character = c;
-			counted = false;
+			if (c == Character::none) {
+				throw std::runtime_error("Entity must have a non-null character value.");
+			}
+		}
+		Scene::Transform *transform = nullptr;
+		Character character = none;
+		Tile* tile = nullptr;
+	};
+
+	struct Tile {
+		Tile(Scene::Transform *t) {
+			transform = t;
 		} 
 	    Scene::Transform *transform = nullptr;
-	    Character character = none;
+	    Entity* entity = nullptr;
 	    bool counted = false;
 	};
 
@@ -53,18 +66,17 @@ struct PlayMode : Mode {
 
 	// scene models
 	Scene::Transform *player = nullptr;
-	std::vector<Scene::Transform *> humans;
-	std::vector<Scene::Transform *> zombies;
+	std::vector<Entity *> humans;
+	std::vector<Entity *> zombies;
 
 	// maps two coords to a tile
-	std::map<std::pair<int8_t, int8_t>, Tile *> tileCoordMap; 
-	std::vector<Tile *> board;
+	std::map<std::pair<int8_t, int8_t>, Tile *> board; 
 
 	uint8_t TILE_SIZE = 3;
 	uint8_t BOARD_WIDTH = 7;
 	uint8_t OFFSET = TILE_SIZE;
 	
-	int zombie_count = 5;
+	int zombie_count = 4;
 	int human_count = 5;
 	int zombies_found = 0;
 	int humans_found = 0;
