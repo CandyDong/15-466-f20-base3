@@ -46,16 +46,19 @@ struct PlayMode : Mode {
 		Character character = none;
 		Tile* tile = nullptr;
 		std::shared_ptr< Sound::PlayingSample > sound = nullptr;
+		bool rotated = false;
 	};
+
+	virtual void update_direction(std::vector<Entity *> chars, int index);
 
 	struct Tile {
 		Tile(Scene::Transform *t, glm::ivec2 ind) {
 			transform = t;
 			index = ind;
 		} 
-	    Scene::Transform *transform = nullptr;
-	    Entity* entity = nullptr;
-	    bool counted = false;
+		Scene::Transform *transform = nullptr;
+		Entity* entity = nullptr;
+		bool counted = false;
 		glm::ivec2 index;
 	};
 
@@ -64,7 +67,7 @@ struct PlayMode : Mode {
 	float RIGHT = 3.1415926f / 2;
 	float UP = 3.1415926f;
 	float LEFT = 1.5f * 3.1415926f;
-	float player_dir = 0.f;
+	float player_dir = DOWN;
 
 	//local copy of the game scene (so code can change it during gameplay):
 	Scene scene;
@@ -86,6 +89,14 @@ struct PlayMode : Mode {
 	int zombies_found = 0;
 	int humans_found = 0;
 
+	bool jumping = false;
+	int jump_steps = 10;
+	int jump_count = 0;
+	float prev_x, prev_y;
+	glm::vec2 delta = glm::vec2(0);
+
+	float ground_height = -1.4f;
+
 	// active 
 	glm::ivec2 getActiveTileCoord();
 	glm::ivec2 active_tile_index = glm::ivec2(3, 3);
@@ -93,7 +104,6 @@ struct PlayMode : Mode {
 
 	// update sound with player movement
 	void updateSound();
-
 
 	int points = 0;
 
