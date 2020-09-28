@@ -49,7 +49,7 @@ struct PlayMode : Mode {
 		bool rotated = false;
 	};
 
-	void update_direction(std::vector<Entity *> chars, int index);
+	void update_direction(Entity * character);
 	// update sound with player movement
 	void update_sound();
 
@@ -97,12 +97,13 @@ struct PlayMode : Mode {
 	float prev_x, prev_y;
 	glm::vec2 delta = glm::vec2(0);
 
-	float ground_height = -1.4f;
+	float ground_height = 1.4f;
 
 	// active 
 	glm::ivec2 getActiveTileCoord();
 	glm::ivec2 active_tile_index = glm::ivec2(3, 3);
-	void handleBoundry(glm::ivec2 &coord, int8_t max, int8_t min);
+	// returns true if boundry case is handled, else false
+	bool handleBoundry(glm::ivec2 &coord, int8_t max, int8_t min);
 
 	int points = 0;
 

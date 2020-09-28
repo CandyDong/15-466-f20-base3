@@ -14,6 +14,7 @@
 #include <random>
 #include <math.h>
 #include <array>
+#include <cassert>
 
 GLuint hexapod_meshes_for_lit_color_texture_program = 0;
 Load< MeshBuffer > hexapod_meshes(LoadTagDefault, []() -> MeshBuffer const * {
@@ -253,17 +254,22 @@ glm::ivec2 PlayMode::getActiveTileCoord() {
 	return active_tile_index - glm::ivec2(OFFSET);
 }
 
-void PlayMode::handleBoundry(glm::ivec2 &coord, int8_t max, int8_t min) {
+bool PlayMode::handleBoundry(glm::ivec2 &coord, int8_t max, int8_t min) {
 	if (coord.x >= max) {
 		coord.x = max-1;
+		return true;
 	} else if (coord.x < min) {
 		coord.x = min;
+		return true;
 	}
 	if (coord.y >= max) {
 		coord.y = max-1;
+		return true;
 	} else if (coord.y < min) {
 		coord.y = min;
+		return true;
 	}
+	return false;
 }
 
 void PlayMode::update_sound() {
@@ -279,44 +285,42 @@ void PlayMode::update_sound() {
 			glm::vec3 sound_position = camera_position + 
 									glm::vec3(player_offset.x*3.0f, player_offset.y*3.0f, 
 									player->transform->position.z);
+			float volume = 1.0f;
 			if ((std::abs(player_offset.x) >= 2) || (std::abs(player_offset.y) >= 2)) {
-				if (tile->entity->sound) {
-					tile->entity->sound->set_volume(0.0f);
-				}
-				continue;
+				volume = 0.0f;
 			}
 			if (tile->entity->character == Character::human) {
 				if (tile->entity->sound == nullptr) {
-					tile->entity->sound = Sound::loop_3D(*human_sample_2, 1.0f, sound_position, 1.5f);
+					tile->entity->sound = Sound::loop_3D(*human_sample_2, volume, sound_position, 1.5f);
 				} else {
 					tile->entity->sound->set_position(sound_position);
-					tile->entity->sound->set_volume(1.0f);
+					tile->entity->sound->set_volume(volume);
 				}
 				
 			} else if (tile->entity->character == Character::zombie) {
 				if (tile->entity->sound == nullptr) {
-					tile->entity->sound = Sound::loop_3D(*zombie_sample_1, 1.0f, sound_position, 1.5f);
+					tile->entity->sound = Sound::loop_3D(*zombie_sample_1, volume, sound_position, 1.5f);
 				} else {
 					tile->entity->sound->set_position(sound_position);
-					tile->entity->sound->set_volume(1.0f);
+					tile->entity->sound->set_volume(volume);
 				}
 			}
 		}
 	}
 }
 
-void PlayMode::update_direction(std::vector<Entity *> chars, int index) {
-  int rise = player->tile->index.y - chars[index]->tile->index.y;
-  int run = player->tile->index.x - chars[index]->tile->index.x;
-  float theta;
-  if (run == 0 && rise > 0) theta = UP;
-  else if (run == 0 && rise <= 0) theta = DOWN;
-  else theta = atan(rise/run) + 3.1415926f/2;
-  if (run < 0) theta += 3.1415926f;
-  chars[index]->transform->rotation = glm::quat(cos(theta/2), 0, 0, sin(theta/2));
-  chars[index]->transform->position = glm::vec3(chars[index]->tile->transform->position.x,
-                                                chars[index]->tile->transform->position.y,
-                                                ground_height);
+void PlayMode::update_direction(Entity *character) {
+	int rise = player->tile->index.y - character->tile->index.y;
+	int run = player->tile->index.x - character->tile->index.x;
+	float theta;
+	if (run == 0 && rise > 0) theta = UP;
+	else if (run == 0 && rise <= 0) theta = DOWN;
+	else theta = atan(rise/run) + 3.1415926f/2;
+	if (run < 0) theta += 3.1415926f;
+	character->transform->rotation = glm::quat(cos(theta/2), 0, 0, sin(theta/2));
+	character->transform->position = glm::vec3(character->tile->transform->position.x,
+											character->tile->transform->position.y,
+											ground_height);
 }
 
 void PlayMode::update(float elapsed) {
@@ -364,56 +368,54 @@ void PlayMode::update(float elapsed) {
 		} else {
 			player_tile_index += glm::ivec2(-player_move.x, -player_move.y);
 		}
-		handleBoundry(player_tile_index, 7, 0);
+		bool boundry_case = handleBoundry(player_tile_index, 7, 0);
 		Tile* player_tile = board[std::make_pair(player_tile_index.x, player_tile_index.y)];
 		player->tile = player_tile;
 		update_sound(); //update sound based on player position
 
 		if (pow(player_move.x, 2) + pow(player_move.y, 2) != 0) {
-		  jumping = true;
-      // rotate characters according to player position
-      for(int i = 0; i < human_count + zombie_count; i++) {
-        if (i < human_count && humans[i]->tile->counted) {
-          update_direction(humans, i);
-        }
-        else if (i >= human_count) {
-          int j = i - human_count;
-          if (zombies[j]->tile->counted) {
-            update_direction(zombies, j);
-          }
-        }
-      }
+		  	jumping = true;
+			// rotate characters according to player position
+			for(int i = 0; i < human_count + zombie_count; i++) {
+				if (i < human_count && humans[i]->tile->counted) {
+					update_direction(humans[i]);
+				} else if (i >= human_count) {
+					int j = i - human_count;
+					if (zombies[j]->tile->counted) {
+						update_direction(zombies[j]);
+					}
+				}
+			}
 		}
-
-		if (!jumping) {
-      player->transform->position.x = player_tile->transform->position.x;
-      player->transform->position.y = player_tile->transform->position.y;
-      player->transform->position.z = ground_height;
+		if ((!jumping) || (boundry_case)) {
+			player->transform->position.x = player_tile->transform->position.x;
+			player->transform->position.y = player_tile->transform->position.y;
+			player->transform->position.z = ground_height;
 		} else {
-		  float a = -1.0f;
-      if (jump_count == 0) {
-        prev_x = player->transform->position.x;
-        prev_y = player->transform->position.y;
-        delta = player_move;
-      }
-		  if (delta.x == 0) {
-		    float b = prev_y + player->tile->transform->position.y;
-		    float c = -prev_y * player->tile->transform->position.y;
-        float curY = prev_y + jump_count * delta.y * TILE_SIZE / jump_steps;
-        float curZ = a * pow(curY, 2) + b * curY + c + ground_height;
-        player->transform->position = glm::vec3(prev_x, curY, curZ);
-		  } else {
-		    float b = prev_x + player->tile->transform->position.x;
-		    float c = -prev_x  * player->tile->transform->position.x;
-        float curX = prev_x + jump_count * delta.x * TILE_SIZE / jump_steps;
-        float curZ = a * pow(curX, 2) + b * curX + c + ground_height;
-        player->transform->position = glm::vec3(curX, prev_y, curZ);
-		  }
-      jump_count++;
-      if (jump_count == jump_steps) {
-        jumping = false;
-        jump_count = 0;
-      }
+			float a = -1.0f;
+			if (jump_count == 0) {
+				prev_x = player->transform->position.x;
+				prev_y = player->transform->position.y;
+				delta = player_move;
+			}
+			if (delta.x == 0) {
+				float b = prev_y + player->tile->transform->position.y;
+				float c = -prev_y * player->tile->transform->position.y;
+				float curY = prev_y + jump_count * delta.y * TILE_SIZE / jump_steps;
+				float curZ = a * pow(curY, 2) + b * curY + c + ground_height;
+				player->transform->position = glm::vec3(prev_x, curY, curZ);
+			} else {
+				float b = prev_x + player->tile->transform->position.x;
+				float c = -prev_x  * player->tile->transform->position.x;
+				float curX = prev_x + jump_count * delta.x * TILE_SIZE / jump_steps;
+				float curZ = a * pow(curX, 2) + b * curX + c + ground_height;
+				player->transform->position = glm::vec3(curX, prev_y, curZ);
+			}
+			jump_count++;
+			if (jump_count == jump_steps) {
+				jumping = false;
+				jump_count = 0;
+			}
 		}
 
 		// move active tile
@@ -456,7 +458,7 @@ void PlayMode::update(float elapsed) {
 
 		// if space pressed, check if the current active tile contains a human/zombie
 		if (space.pressed) {
-		  assert(active_tile != nullptr);
+		  	assert(active_tile != nullptr);
 			if (active_tile->entity == nullptr) {
 				points--;
 			} else {
@@ -465,8 +467,7 @@ void PlayMode::update(float elapsed) {
 					points++;
 					if (zombies_found < zombie_count) {
 						active_tile->entity->sound->set_volume(0.0f);
-						zombies[zombies_found]->tile = active_tile;
-            update_direction(zombies, zombies_found);
+            			update_direction(active_tile->entity);
 						zombies_found++;
 						if (zombies_found == zombie_count) {
 							game_over = true;
@@ -478,8 +479,7 @@ void PlayMode::update(float elapsed) {
 					points--;
 					if (humans_found < human_count) {
 						active_tile->entity->sound->set_volume(0.0f);
-						humans[humans_found]->tile = active_tile;
-						update_direction(humans, humans_found);
+						update_direction(active_tile->entity);
 						humans_found++;
 					}
 					board[std::make_pair(active_tile_index.x, active_tile_index.y)]->counted = true;
