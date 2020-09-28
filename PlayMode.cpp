@@ -13,6 +13,7 @@
 
 #include <random>
 #include <math.h>
+#include <array>
 
 GLuint hexapod_meshes_for_lit_color_texture_program = 0;
 Load< MeshBuffer > hexapod_meshes(LoadTagDefault, []() -> MeshBuffer const * {
@@ -38,6 +39,10 @@ Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
 	});
 });
 
+Load< Sound::Sample > background_sample(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("Funshine.wav"));
+});
+
 Load< Sound::Sample > zombie_sample_1(LoadTagDefault, []() -> Sound::Sample const * {
 	return new Sound::Sample(data_path("zombie_1.opus"));
 });
@@ -55,7 +60,6 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 	for (auto &transform : scene.transforms) {
 		if (transform.name == "Zombie") {
 			player = new Entity(&transform, Character::zombie);
-			std::cout << "player position: " + glm::to_string(player->transform->position) << std::endl;
 		}
 		if (transform.name == "Zombie.001" || transform.name == "Zombie.002" ||
 			transform.name == "Zombie.003" || transform.name == "Zombie.004") {
@@ -92,9 +96,9 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
 	camera->init_camera(player->transform->position);
-	//start music loop playing:
-	// (note: position will be over-ridden in update())
-	// zombie_1 = Sound::loop_3D(*zombie_sample_1, 1.0f, glm::vec3(0,0,0), 10.0f);
+
+	// start background music 
+	Sound::loop(*background_sample, 0.1f, 0.0f);
 }
 
 PlayMode::~PlayMode() {
@@ -117,6 +121,9 @@ PlayMode::~PlayMode() {
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
+	if (game_over) {
+		return false;
+	}
 
 	if (evt.type == SDL_KEYDOWN) {
 		if (evt.key.keysym.sym == SDLK_a) {
@@ -245,27 +252,56 @@ glm::ivec2 PlayMode::getActiveTileCoord() {
 	return active_tile_index - glm::ivec2(OFFSET);
 }
 
-void PlayMode::update(float elapsed) {
-	//slowly rotates through [0,1):
-	// wobble += elapsed / 10.0f;
-	// wobble -= std::floor(wobble);
-	
-	//move sound to follow leg tip position:
-	// zombie_1->set_position(glm::vec3(0,0,0), 1.0f / 60.0f);
-	{
-		auto handleBoundry = [](glm::ivec2 &coord, int8_t max, int8_t min) {
-			if (coord.x >= max) {
-				coord.x = max-1;
-			} else if (coord.x < min) {
-				coord.x = min;
-			}
-			if (coord.y >= max) {
-				coord.y = max-1;
-			} else if (coord.y < min) {
-				coord.y = min;
-			}
-		};
+void PlayMode::handleBoundry(glm::ivec2 &coord, int8_t max, int8_t min) {
+	if (coord.x >= max) {
+		coord.x = max-1;
+	} else if (coord.x < min) {
+		coord.x = min;
+	}
+	if (coord.y >= max) {
+		coord.y = max-1;
+	} else if (coord.y < min) {
+		coord.y = min;
+	}
+}
 
+void PlayMode::updateSound() {
+	glm::vec3 camera_position = camera->transform->position;
+	// std::array<int8_t, 3> dirs = {1, 0, -1};
+	for (int i = 0; i < BOARD_WIDTH; i++) {
+		for (int j = 0; j < BOARD_WIDTH; j++) {
+			Tile* tile = board[std::make_pair(i, j)];
+			if (tile->entity == nullptr) {
+				continue;
+			}
+			glm::ivec2 player_offset = glm::ivec2(i, j) - player->tile->index;
+			glm::vec3 sound_position = camera_position + 
+									glm::vec3(player_offset.x*2.0f, player_offset.y*2.0f, 
+									player->transform->position.z);
+			if (tile->entity->character == Character::human) {
+				if (tile->entity->sound == nullptr) {
+					tile->entity->sound = Sound::loop_3D(*human_sample_2, 2.0f, sound_position, 0.5f);
+				} else {
+					tile->entity->sound->set_position(sound_position);
+				}
+				
+			} else if (tile->entity->character == Character::zombie) {
+				if (tile->entity->sound == nullptr) {
+					tile->entity->sound = Sound::loop_3D(*zombie_sample_1, 1.5f, sound_position, 0.5f);
+				} else {
+					tile->entity->sound->set_position(sound_position);
+				}
+			}
+		}
+	}
+}
+
+void PlayMode::update(float elapsed) {
+	if (game_over) {
+		return;
+	}
+
+	{
 		//combine inputs into a move:
 		glm::ivec2 player_move = glm::vec2(0);
 		float theta = 0.f;
@@ -308,6 +344,7 @@ void PlayMode::update(float elapsed) {
 		player->tile = player_tile;
 		player->transform->position.x = player_tile->transform->position.x;
 		player->transform->position.y = player_tile->transform->position.y;
+		updateSound(); //update sound based on player position
 
 
 		// move active tile
@@ -358,8 +395,12 @@ void PlayMode::update(float elapsed) {
 					if (zombies_found < zombie_count) {
 						glm::vec3 pos = board[std::make_pair(active_tile_index.x, active_tile_index.y)]->transform->position;
 						pos.z = 1.4f; // read from blender
-						zombies[zombies_found]->transform->position = pos;
+						active_tile->entity->transform->position = pos;
+						active_tile->entity->sound->set_volume(0.0f);
 						zombies_found++;
+						if (zombies_found == zombie_count) {
+							game_over = true;
+						}
 					}
 					board[std::make_pair(active_tile_index.x, active_tile_index.y)]->counted = true;
 				} else if (active_tile->entity->character == human && 
@@ -368,7 +409,8 @@ void PlayMode::update(float elapsed) {
 					if (humans_found < human_count) {
 						glm::vec3 pos = board[std::make_pair(active_tile_index.x, active_tile_index.y)]->transform->position;
 						pos.z = 1.4f;
-						humans[humans_found]->transform->position = pos;
+						active_tile->entity->transform->position = pos;
+						active_tile->entity->sound->set_volume(0.0f);
 						humans_found++;
 					}
 					board[std::make_pair(active_tile_index.x, active_tile_index.y)]->counted = true;
@@ -411,7 +453,11 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	glUseProgram(lit_color_texture_program->program);
 	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
 	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f,-1.0f)));
-	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
+	if (game_over) {
+		glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.8f, 0.8f, 0.8f)));
+	} else {
+		glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
+	}
 	glUseProgram(0);
 
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
@@ -458,12 +504,23 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		lines.draw_text("Points: " + std::to_string(points),
 			glm::vec3(aspect - point_len, 1.0 - H, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
 		lines.draw_text("Points: " + std::to_string(points),
 			glm::vec3(aspect - point_len +ofs, 1.0 - H + ofs, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 
+		if (game_over) {
+			std::string text = "You've found all your zombies friends!! Your point is " + std::to_string(points);
+			lines.draw_text(text,
+				glm::vec3(-0.9f, -0.0f - H, 0.0),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0x00, 0x00, 0x00, 0x00));
+			lines.draw_text(text,
+				glm::vec3(-0.9f + ofs, 0.0f - H + ofs, 0.0),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0x00, 0x00));
+		}
 	}
 	GL_ERRORS();
 }
@@ -487,8 +544,3 @@ void PlayMode::initialize_board() {
 		}
 	}
 }
-
-// glm::vec3 PlayMode::get_leg_tip_position() {
-// 	//the vertex position here was read from the model in blender:
-// 	return lower_leg->make_local_to_world() * glm::vec4(-1.26137f, -11.861f, 0.0f, 1.0f);
-// }

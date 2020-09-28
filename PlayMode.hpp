@@ -21,6 +21,8 @@ struct PlayMode : Mode {
 
 	//----- game state -----
 
+	bool game_over = false;
+
 	//input tracking:
 	struct Button {
 		uint8_t downs = 0;
@@ -43,6 +45,7 @@ struct PlayMode : Mode {
 		Scene::Transform *transform = nullptr;
 		Character character = none;
 		Tile* tile = nullptr;
+		std::shared_ptr< Sound::PlayingSample > sound = nullptr;
 	};
 
 	struct Tile {
@@ -86,11 +89,13 @@ struct PlayMode : Mode {
 	// active 
 	glm::ivec2 getActiveTileCoord();
 	glm::ivec2 active_tile_index = glm::ivec2(3, 3);
+	void handleBoundry(glm::ivec2 &coord, int8_t max, int8_t min);
+
+	// update sound with player movement
+	void updateSound();
+
 
 	int points = 0;
-
-	//music coming from the tip of the leg (as a demonstration):
-	std::shared_ptr< Sound::PlayingSample > zombie_1;
 
 	// outline thickness
 	float outline = 3.0f;
