@@ -1,8 +1,8 @@
-# (TODO: your game's title)
+# Zombie Needs Friends
 
 Author: Qingyi Dong, Michelle Chang
 
-Design: A whack-a-zombie game where the player can determine the position of your zombie friends by listening to the location of the banging noise. Beware of humans- they make a different noise.
+Design: A whack-a-zombie game where the player can determine the position of your zombie friends by listening to the location of the banging noise. Beware of humans- they make a different noise!
 
 Screen Shot:
 

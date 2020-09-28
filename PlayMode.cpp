@@ -603,11 +603,9 @@ void PlayMode::initialize_board() {
 			c = rand() % BOARD_WIDTH;
 		}
 		if (i < zombie_count) {
-			std::cout << "zombie " + std::to_string(i) + ": " + std::to_string(r) + ", " + std::to_string(c) + "\n";
 			board[std::make_pair(r, c)]->entity = zombies[i];
 			zombies[i]->tile = board[std::make_pair(r, c)];
 		} else {
-			std::cout << "human " + std::to_string(i) + ": " + std::to_string(r) + ", "+ std::to_string(c) + "\n";
 			board[std::make_pair(r, c)]->entity = humans[i-zombie_count];
 			humans[i-zombie_count]->tile = board[std::make_pair(r, c)];
 		}
