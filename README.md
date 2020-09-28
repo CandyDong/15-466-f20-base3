@@ -1,8 +1,8 @@
 # (TODO: your game's title)
 
-Author: (TODO: your name)
+Author: Qingyi Dong, Michelle Chang
 
-Design: (TODO: In two sentences or fewer, describe what is new and interesting about your game.)
+Design: A whack-a-zombie game where the player can determine the position of your zombie friends by listening to the location of the banging noise. Beware of humans- they make a different noise.
 
 Screen Shot:
 
@@ -10,10 +10,14 @@ Screen Shot:
 
 How To Play:
 
-(TODO: describe the controls and (if needed) goals/strategy.)
+- Move around the grid with WASD
+- Move the highlighted tile with arrow keys
+- Use the space key to reveal the character enclosed below the highlighted tile
+- Points are incremented for every zombie found; points are deducted for every human found and every empty tile attempted.
 
 Sources: 
-[background music] Funshine(https://freepd.com/upbeat.php)
+- [background music] Funshine(https://freepd.com/upbeat.php)
+- Voxel characters created with [MagicaVoxel](https://ephtracy.github.io/)
 
 This game was built with [NEST](NEST.md).
 
