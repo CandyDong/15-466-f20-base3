@@ -49,7 +49,9 @@ struct PlayMode : Mode {
 		bool rotated = false;
 	};
 
-	virtual void update_direction(std::vector<Entity *> chars, int index);
+	void update_direction(std::vector<Entity *> chars, int index);
+	// update sound with player movement
+	void update_sound();
 
 	struct Tile {
 		Tile(Scene::Transform *t, glm::ivec2 ind) {
@@ -101,9 +103,6 @@ struct PlayMode : Mode {
 	glm::ivec2 getActiveTileCoord();
 	glm::ivec2 active_tile_index = glm::ivec2(3, 3);
 	void handleBoundry(glm::ivec2 &coord, int8_t max, int8_t min);
-
-	// update sound with player movement
-	void updateSound();
 
 	int points = 0;
 

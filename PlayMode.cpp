@@ -266,7 +266,7 @@ void PlayMode::handleBoundry(glm::ivec2 &coord, int8_t max, int8_t min) {
 	}
 }
 
-void PlayMode::updateSound() {
+void PlayMode::update_sound() {
 	glm::vec3 camera_position = camera->transform->position;
 	// std::array<int8_t, 3> dirs = {1, 0, -1};
 	for (int i = 0; i < BOARD_WIDTH; i++) {
@@ -277,20 +277,28 @@ void PlayMode::updateSound() {
 			}
 			glm::ivec2 player_offset = glm::ivec2(i, j) - player->tile->index;
 			glm::vec3 sound_position = camera_position + 
-									glm::vec3(player_offset.x*2.0f, player_offset.y*2.0f, 
+									glm::vec3(player_offset.x*3.0f, player_offset.y*3.0f, 
 									player->transform->position.z);
+			if ((std::abs(player_offset.x) >= 2) || (std::abs(player_offset.y) >= 2)) {
+				if (tile->entity->sound) {
+					tile->entity->sound->set_volume(0.0f);
+				}
+				continue;
+			}
 			if (tile->entity->character == Character::human) {
 				if (tile->entity->sound == nullptr) {
-					tile->entity->sound = Sound::loop_3D(*human_sample_2, 2.0f, sound_position, 0.5f);
+					tile->entity->sound = Sound::loop_3D(*human_sample_2, 1.0f, sound_position, 1.5f);
 				} else {
 					tile->entity->sound->set_position(sound_position);
+					tile->entity->sound->set_volume(1.0f);
 				}
 				
 			} else if (tile->entity->character == Character::zombie) {
 				if (tile->entity->sound == nullptr) {
-					tile->entity->sound = Sound::loop_3D(*zombie_sample_1, 1.5f, sound_position, 0.5f);
+					tile->entity->sound = Sound::loop_3D(*zombie_sample_1, 1.0f, sound_position, 1.5f);
 				} else {
 					tile->entity->sound->set_position(sound_position);
+					tile->entity->sound->set_volume(1.0f);
 				}
 			}
 		}
@@ -359,7 +367,7 @@ void PlayMode::update(float elapsed) {
 		handleBoundry(player_tile_index, 7, 0);
 		Tile* player_tile = board[std::make_pair(player_tile_index.x, player_tile_index.y)];
 		player->tile = player_tile;
-		updateSound(); //update sound based on player position
+		update_sound(); //update sound based on player position
 
 		if (pow(player_move.x, 2) + pow(player_move.y, 2) != 0) {
 		  jumping = true;
