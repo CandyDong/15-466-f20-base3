@@ -21,6 +21,8 @@ struct PlayMode : Mode {
 
 	//----- game state -----
 
+	bool game_over = false;
+
 	//input tracking:
 	struct Button {
 		uint8_t downs = 0;
@@ -30,15 +32,31 @@ struct PlayMode : Mode {
 
 	enum Character { none, zombie, human };
 
-	struct Tile {
-		Tile(Scene::Transform *t, Character c) {
-			transform = t;
+	struct Tile; // Forward-declare one of the structs to compile
+	// entity must have a nonnull character value
+	struct Entity {
+		Entity(Scene::Transform *trans, Character c) {
+			transform = trans;
 			character = c;
-			counted = false;
+			if (c == Character::none) {
+				throw std::runtime_error("Entity must have a non-null character value.");
+			}
+		}
+		Scene::Transform *transform = nullptr;
+		Character character = none;
+		Tile* tile = nullptr;
+		std::shared_ptr< Sound::PlayingSample > sound = nullptr;
+	};
+
+	struct Tile {
+		Tile(Scene::Transform *t, glm::ivec2 ind) {
+			transform = t;
+			index = ind;
 		} 
 	    Scene::Transform *transform = nullptr;
-	    Character character = none;
+	    Entity* entity = nullptr;
 	    bool counted = false;
+		glm::ivec2 index;
 	};
 
 	//direction that the character is facing
@@ -52,19 +70,18 @@ struct PlayMode : Mode {
 	Scene scene;
 
 	// scene models
-	Scene::Transform *player = nullptr;
-	std::vector<Scene::Transform *> humans;
-	std::vector<Scene::Transform *> zombies;
+	Entity *player = nullptr;
+	std::vector<Entity *> humans;
+	std::vector<Entity *> zombies;
 
 	// maps two coords to a tile
-	std::map<std::pair<int8_t, int8_t>, Tile *> tileCoordMap; 
-	std::vector<Tile *> board;
+	std::map<std::pair<int8_t, int8_t>, Tile *> board; 
 
 	uint8_t TILE_SIZE = 3;
 	uint8_t BOARD_WIDTH = 7;
 	uint8_t OFFSET = TILE_SIZE;
 	
-	int zombie_count = 5;
+	int zombie_count = 4;
 	int human_count = 5;
 	int zombies_found = 0;
 	int humans_found = 0;
@@ -72,12 +89,13 @@ struct PlayMode : Mode {
 	// active 
 	glm::ivec2 getActiveTileCoord();
 	glm::ivec2 active_tile_index = glm::ivec2(3, 3);
-	Tile *active_tile = nullptr;
+	void handleBoundry(glm::ivec2 &coord, int8_t max, int8_t min);
+
+	// update sound with player movement
+	void updateSound();
+
 
 	int points = 0;
-
-	//music coming from the tip of the leg (as a demonstration):
-	std::shared_ptr< Sound::PlayingSample > zombie_1;
 
 	// outline thickness
 	float outline = 3.0f;
