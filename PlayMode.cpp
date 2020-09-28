@@ -289,7 +289,7 @@ void PlayMode::update_sound() {
 			if ((std::abs(player_offset.x) >= 2) || (std::abs(player_offset.y) >= 2)) {
 				volume = 0.0f;
 			}
-			if (tile->entity->character == Character::human) {
+			if (tile->entity->character == Character::human && !tile->counted) {
 				if (tile->entity->sound == nullptr) {
 					tile->entity->sound = Sound::loop_3D(*human_sample_2, volume, sound_position, 1.5f);
 				} else {
@@ -297,7 +297,7 @@ void PlayMode::update_sound() {
 					tile->entity->sound->set_volume(volume);
 				}
 				
-			} else if (tile->entity->character == Character::zombie) {
+			} else if (tile->entity->character == Character::zombie && !tile->counted) {
 				if (tile->entity->sound == nullptr) {
 					tile->entity->sound = Sound::loop_3D(*zombie_sample_1, volume, sound_position, 1.5f);
 				} else {
